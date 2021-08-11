@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Example Web App</title>
+<script src="./node_modules/axios/dist/axios.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.js"></script>
+<style>
+    * {margin: 0; padding: 0; border: 0;}
+    
+    .wrapper {
+        background-color: white;
+        width: 100vw;
+        height: 100vh;
+    }
+    
+    .img {
+        width: 100%;
+        height: 100%;
+    }
+</style>
+<script>
+    let bridge = new WebOSServiceBridge();
+            function toastCallback(msg) {
+                console.log('before-parse-response');
+                let response = JSON.parse(msg);
+                consle.log(response);
+            }
+            function createToast() {
+                let url = 'luna://com.webos.notification/createToast';
+                bridge.onservicecallback = toastCallback;
+                let params = {
+                    'message' : 'change'
+                };
+                console.log('before-bredge.call');
+                bridge.call(url, JSON.stringify(params));
+                console.log('after-bridge.call');
+            }
+</script>
+</head>
+<body>
+    <div id="wrapper" class="wrapper">
+    </div>
+    <script></script>
+    <script>
+        const wrapper = document.getElementById('wrapper');
+        
+        // 디스플레이 해주는 함수
+        const displayImg = (weather) => {
+            // img태그 생성
+            let img = document.createElement('img');
+            // 감정 변화에 따른 태그 사용을 위해 img태그의 id 설정
+            img.setAttribute('id', 'img')
+            // img태그에 style적용을 위해 class적용
+            img.classList.add('img');
+            let imgNumber = 1;
+            // 이미지 폴더에서 랜덤으로 파일 가져오기 위한 랜덤함수
+            imgNumber = Math.floor(Math.random() * 4) + 1;
+            // 날씨 api에서 받은 데이터를 weather 매개변수로 받고 각 케이스 별로 wrapper 태그 안에
+            // img태그 자식으로 추가
+            switch (weather)
+            {
+                case 'Clear':
+                    index = 'clear';
+                    src = `./images/clear/${imgNumber}.jpg`;
+                    img.setAttribute('src', src);
+                    break;
+                case 'Rain':
+                case 'Clouds':
+                    index = 'cloud';
+                    src = `./images/cloud/${imgNumber}.jpg`;
+                    img.setAttribute('src', src);
+                    break;
+                case 'Snow':
+                    index = 'snow';
+                    src = `./images/snow/${imgNumber}.jpg`;
+                    img.setAttribute('src', src);
+                    break;
+            }
+            wrapper.appendChild(img);
+        }
+        // 날씨 api로부터 현재 위치의 날씨 데이터 가져오는 함수
+        const getWeather = async (latitude, longitude) => {
+            const { data } = await axios.get(`http://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&APPID=b3c49cd560fb3defc700f36b7bc8a4a4`);
+            console.log(data.weather[0].main);
+            displayImg(data.weather[0].main);
+        }
+        const getLocation = () => {
+            let location = 'Jeju Jejusi'
+            axios.get('https://maps.googleapis.com/maps/api/geocode/json', {
+                params: {
+                    address: location,
+                    key: 'AIzaSyANmlLs5ikdpVfVpxIF-lq4qGJNa85lnHQ'
+                }
+            }).then(function(response) {
+                console.log(response.data.results[0].geometry.location);
+                let latitude = response.data.results[0].geometry.location.lat;
+                let longitude = response.data.results[0].geometry.location.lng;
+                console.log(latitude);
+                console.log(longitude);
+                getWeather(latitude, longitude);
+            })
+        }
+        getLocation();
+            var changeTime = 0;
+            window.addEventListener('load', function(){
+                var webSocket = new WebSocket("ws://192.168.150.75:7890");
+                var messageTextArea = document.getElementById("messageTextArea");
+                webSocket.onopen = function(message){
+                console.log('connect')
+                };
+                webSocket.onclose = function(message){
+                console.log('disconnect')
+                };
+                webSocket.onerror = function(message){
+                console.log('err')
+                };
+                alist = ["./audio/aftertherain.mp3", "./audio/Autumn.mp3","./audio/Birthday.mp3", "./audio/HappyforYou.mp3"];
+                let audio = new Audio();
+                audio.src = alist[0];
+                function aplay(changed) {
+                    if(changed == true){
+                        audio.play();
+                        changed = false;
+                    } else {
+                        audio.pause();
+                    }
+                }
+                // 표정 감정 데이터 가져오는 코드
+                webSocket.onmessage = function(message){
+                    console.log(message.data)
+                    // 감정을 message.data로 가져온다
+                    const image = document.getElementById('img');
+                    // 날씨 변화에 따른 display되는 img태그를 가져온다
+                    let imgNumber = 1;
+                    imgNumber = Math.floor(Math.random() * 4) + 1;
+                    changed = true;
+                    aplay(changed);
+                    if(Date.now() >= changeTime + 10000){
+                        switch (message.data)
+                        {
+                            // 케이스문으로 감정에 따라 img태그의 src 변경
+                            case 'happy':
+                                src = `./images/clear/${imgNumber}.jpg`;
+                                image.src = src;
+                                changeTime = Date.now();
+                                audio.src = alist[0];
+
+                                createToast();
+                                break;
+                            case 'sad':
+                                src = `./images/cloud/${imgNumber}.jpg`;
+                                image.src = src;
+                                changeTime = Date.now();
+                                audio.src = alist[1];
+                                createToast();
+                                break;
+                            case 'neutual':
+                                src = `./images/neutual/${imgNumber}.jpg`
+                                image.src = src;
+                                changeTime = Date.now();
+                                audio.src = alist[2];
+                                createToast();
+                                break;
+                            case 'angry':
+                                src = `./images/angry/${imgNumber}.jpg`
+                                image.src = src;
+                                changeTime = Date.now();
+                                audio.src = alist[3];
+                                createToast();
+                                break;
+                        }
+                    }
+                };
+            }, false);
+        </script>
+</body>
+</html>
